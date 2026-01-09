@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>歴史人物マスター</title>
+    <!-- Tailwind CSS (デザイン用) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons (アイコン用) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; }
+        .font-mono-mask { font-family: monospace, monospace; letter-spacing: 0.2em; }
+        
+        /* ルビの表示制御 */
+        rt { 
+            display: none; 
+            font-size: 0.6em; 
+            color: #6366f1; /* 藍色 */
+        }
+        .ruby-on rt { 
+            display: inline; 
+        }
+
+        /* アニメーション */
+        .animate-in { animation: fadeIn 0.3s ease-out forwards; }
+        .zoom-in { animation: zoomIn 0.3s ease-out forwards; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes zoomIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 overflow-hidden select-none h-screen w-full">
+
+    <div id="app" class="h-full w-full relative overflow-y-auto overflow-x-hidden">
+        <!-- ここにJavaScriptで画面が描画されます -->
+    </div>
+
+    <script>
+        // --- データ定義 ---
+const RAW_DATA = [
+  // --- 弥生 ---
+  { level: 1, era: '弥生', name: '卑弥呼', reading: 'ひみこ', keywords: '<ruby>邪馬台国<rt>やまたいこく</rt></ruby>, <ruby>魏<rt>ぎ</rt></ruby>, <ruby>親魏倭王<rt>しんぎわおう</rt></ruby>, <ruby>金印<rt>きんいん</rt></ruby>', desc: '<ruby>邪馬台国<rt>やまたいこく</rt></ruby>の女王。<ruby>魏<rt>ぎ</rt></ruby>に使いを送り「<ruby>親魏倭王<rt>しんぎわおう</rt></ruby>」の称号と<ruby>金印<rt>きんいん</rt></ruby>を受けた。', years: '?～247?', imageUrl: 'images/himiko.png' },
+
+  // --- 飛鳥 ---
+  { level: 1, era: '飛鳥', name: '聖徳太子', reading: 'しょうとくたいし', keywords: '<ruby>推古天皇<rt>すいこてんのう</rt></ruby>の<ruby>摂政<rt>せっしょう</rt></ruby>, <ruby>冠位十二階<rt>かんいじゅうにかい</rt></ruby>, <ruby>十七条<rt>じゅうしちじょう</rt></ruby>の<ruby>憲法<rt>けんぽう</rt></ruby>', desc: '<ruby>推古天皇<rt>すいこてんのう</rt></ruby>の<ruby>摂政<rt>せっしょう</rt></ruby>。<ruby>冠位十二階<rt>かんいじゅうにかい</rt></ruby>や<ruby>十七条<rt>じゅうしちじょう</rt></ruby>の<ruby>憲法<rt>けんぽう</rt></ruby>を制定し、天皇中心の政治を目指した。', years: '574～622', imageUrl: 'images/shotokutaishi.png' },
+  { level: 2, era: '飛鳥', name: '小野妹子', reading: 'おののいもこ', keywords: '<ruby>遣隋使<rt>けんずいし</rt></ruby>', desc: '聖徳太子により<ruby>遣隋使<rt>けんずいし</rt></ruby>として派遣された。対等な外交を目指した。', years: '(生没年不詳)', imageUrl: 'images/ononoimoko.png' },
+  { level: 3, era: '飛鳥', name: '蘇我馬子', reading: 'そがのうまこ', keywords: '仏教受容, 崇峻天皇暗殺, 飛鳥寺', desc: '有力な豪族。仏教の受け入れを巡って物部氏と対立し、滅ぼした。', years: '?～626', imageUrl: 'images/soganoumako.png' },
+  { level: 1, era: '飛鳥', name: '中大兄皇子', reading: 'なかのおおえのおうじ', keywords: '<ruby>大化<rt>たいか</rt></ruby>の<ruby>改新<rt>かいしん</rt></ruby>, <ruby>天智天皇<rt>てんじてんのう</rt></ruby>, <ruby>公地公民<rt>こうちこうみん</rt></ruby>', desc: '中臣鎌足と協力して<ruby>蘇我<rt>そが</rt></ruby>氏を倒し、<ruby>大化<rt>たいか</rt></ruby>の<ruby>改新<rt>かいしん</rt></ruby>を始めた。', years: '626～671', imageUrl: 'images/naka_no_oe.png' },
+  { level: 1, era: '飛鳥', name: '中臣鎌足', reading: 'なかとみのかまたり', keywords: '大化の改新, 藤原氏の祖', desc: '中大兄皇子とともに大化の改新を行った。死の直前に藤原の姓を賜った。', years: '614～669', imageUrl: 'images/nakatomi_no_kamatari.png' },
+  { level: 3, era: '飛鳥', name: '天武天皇', reading: 'てんむてんのう', keywords: '壬申の乱, 八色の姓, 富本銭', desc: '大海人皇子として壬申の乱に勝利し即位。天皇中心の中央集権国家を目指した。', years: '?～686', imageUrl: 'images/tenmu_tenno.png' },
+
+  // --- 奈良 ---
+  { level: 1, era: '奈良', name: '聖武天皇', reading: 'しょうむてんのう', keywords: '国分寺, 東大寺, 大仏, 墾田永年私財法', desc: '仏教の力で国を守ろうとし、全国に国分寺、都に東大寺の大仏を作らせた。', years: '701～756', imageUrl: 'images/syoumu_tenno.png' },
+  { level: 2, era: '奈良', name: '行基', reading: 'ぎょうき', keywords: '大仏造立, 社会事業', desc: '一般民衆に仏教を広め、橋やため池を作る社会事業を行った。大仏造立に尽力した。', years: '668～749', imageUrl: 'images/gyoki.png' },
+  { level: 2, era: '奈良', name: '鑑真', reading: 'がんじん', keywords: '唐招提寺, 律宗', desc: '度重なる遭難で失明しながらも来日。正しい仏教の教えを伝え、唐招提寺を建てた。', years: '688?～763', imageUrl: 'images/ganjin.png' },
+
+  // --- 平安 ---
+  { level: 3, era: '平安', name: '桓武天皇', reading: 'かんむてんのう', keywords: '平安京遷都, 征夷大将軍派遣', desc: '794年に平安京に都を移した。坂上田村麻呂を東北地方に派遣した。', years: '737～806', imageUrl: 'images/kanmu_tenno.png' },
+  { level: 3, era: '平安', name: '坂上田村麻呂', reading: 'さかのうえのたむらまろ', keywords: '征夷大将軍, 蝦夷討伐, 清水寺', desc: '桓武天皇により征夷大将軍に任命され、東北地方の蝦夷を平定した。', years: '758～811', imageUrl: 'images/sakanoue_no_tamuramaro.png' },
+  { level: 2, era: '平安', name: '空海', reading: 'くうかい', keywords: '真言宗, 高野山, 金剛峯寺', desc: '唐で密教を学び、帰国後に高野山に金剛峯寺を建てて真言宗を広めた。', years: '774～835', imageUrl: 'images/kukai.png' },
+  { level: 1, era: '平安', name: '藤原道長', reading: 'ふじわらのみちなが', keywords: '<ruby>摂関政治<rt>せっかんせいじ</rt></ruby>, <ruby>全盛期<rt>ぜんせいき</rt></ruby>', desc: '娘を天皇の后にし、<ruby>摂関政治<rt>せっかんせいじ</rt></ruby>の<ruby>全盛期<rt>ぜんせいき</rt></ruby>を築いた。', years: '966～1027', imageUrl: 'images/fujiwara_no_michinaga.png' },
+  { level: 2, era: '平安', name: '紫式部', reading: 'むらさきしきぶ', keywords: '源氏物語, 国風文化', desc: '一条天皇の中宮彰子に仕え、世界最古の長編小説「源氏物語」を書いた。', years: '(生没年不詳)', imageUrl: 'images/murasakishikibu.png' },
+  { level: 2, era: '平安', name: '清少納言', reading: 'せいしょうなごん', keywords: '枕草子, 随筆', desc: '一条天皇の皇后定子に仕え、随筆「枕草子」を書いた。「春はあけぼの」で有名。', years: '(生没年不詳)', imageUrl: 'images/seishonagon.png' },
+  { level: 3, era: '平安', name: '白河上皇', reading: 'しらかわじょうこう', keywords: '院政, 北面の武士', desc: '天皇の位を譲った後も上皇として政治を行う「院政」を始めた。', years: '1053～1129', imageUrl: 'images/shirakawa_joko.png' },
+  { level: 1, era: '平安', name: '平清盛', reading: 'たいらのきよもり', keywords: '太政大臣, 日宋貿易, 平氏政権', desc: '武士として初めて太政大臣となった。大輪田泊を修築し、日宋貿易を行った。', years: '1118～1181', imageUrl: 'images/taira_no_kiyomori.png' },
+
+  // --- 鎌倉 ---
+  { level: 1, era: '鎌倉', name: '源頼朝', reading: 'みなもとのよりとも', keywords: '<ruby>鎌倉幕府<rt>かまくらばくふ</rt></ruby>, <ruby>守護<rt>しゅご</rt></ruby>・<ruby>地頭<rt>じとう</rt></ruby>', desc: '平氏を滅ぼし、<ruby>鎌倉幕府<rt>かまくらばくふ</rt></ruby>を開いた。国ごとに<ruby>守護<rt>しゅご</rt></ruby>、荘園ごとに<ruby>地頭<rt>じとう</rt></ruby>を置いた。', years: '1147～1199', imageUrl: 'images/minamoto_yoritomo.png' },
+  { level: 2, era: '鎌倉', name: '源義経', reading: 'みなもとのよしつね', keywords: '壇ノ浦の戦い', desc: '頼朝の弟。牛若丸の名でも知られる。壇ノ浦の戦いで平氏を滅ぼしたが、兄に追われ自害した。', years: '1159～1189', imageUrl: 'images/minamoto_yoshitsune.png' },
+  { level: 2, era: '鎌倉', name: '北条政子', reading: 'ほうじょうまさこ', keywords: '承久の乱, 尼将軍', desc: '頼朝の妻。承久の乱の際、御家人に演説を行い結束させた。「尼将軍」と呼ばれた。', years: '1157～1225', imageUrl: 'images/hojo_masako.png' },
+  { level: 3, era: '鎌倉', name: '北条泰時', reading: 'ほうじょうやすとき', keywords: '御成敗式目, 執権', desc: '第3代執権。武士のための法律である「御成敗式目」を制定した。', years: '1183～1242', imageUrl: 'images/hojo_yasutoki.png' },
+  { level: 3, era: '鎌倉', name: '後鳥羽上皇', reading: 'ごとばじょうこう', keywords: '承久の乱, 隠岐配流, 新古今和歌集', desc: '鎌倉幕府を倒そうと承久の乱を起こしたが敗れ、隠岐に流された。', years: '1180～1239', imageUrl: 'images/gotoba_joko.png' },
+  { level: 2, era: '鎌倉', name: '北条時宗', reading: 'ほうじょうときむね', keywords: '元寇, 執権', desc: '鎌倉幕府の第8代執権。二度にわたる元軍の襲来（元寇）を退けた。', years: '1251～1284', imageUrl: 'images/hojo_tokimune.png' },
+
+  // --- 室町 ---
+  { level: 3, era: '室町', name: '後醍醐天皇', reading: 'ごだいごてんのう', keywords: '建武の新政, 南北朝時代', desc: '鎌倉幕府を倒し、天皇中心の政治（建武の新政）を行ったが、足利尊氏と対立した。', years: '1288～1339', imageUrl: 'images/godaigo_tenno.png' },
+  { level: 3, era: '室町', name: '足利尊氏', reading: 'あしかがたかうじ', keywords: '室町幕府, 建武の新政離反', desc: '後醍醐天皇に協力して鎌倉幕府を倒したが、後に離反して室町幕府を開いた。', years: '1305～1358', imageUrl: 'images/asikaga_takauji.png' },
+  { level: 1, era: '室町', name: '足利義満', reading: 'あしかがよしみつ', keywords: '金閣, 南北朝統一, 勘合貿易', desc: '第3代将軍。南北朝を統一。明と勘合貿易を始め、京都の北山に金閣を建てた。', years: '1358～1408', imageUrl: 'images/ashikaga_yoshimitsu.png' },
+  { level: 2, era: '室町', name: '足利義政', reading: 'あしかがよしまさ', keywords: '銀閣, 応仁の乱, 東山文化', desc: '第8代将軍。跡継ぎ争いから応仁の乱が起きた。銀閣を建て、東山文化が栄えた。', years: '1436～1490', imageUrl: 'images/ashikaga_yoshimasa.png' },
+  { level: 2, era: '室町', name: '雪舟', reading: 'せっしゅう', keywords: '水墨画', desc: '明に渡り水墨画を学んだ。日本風の水墨画を大成させた。「秋冬山水図」が有名。', years: '1420～1506?', imageUrl: 'images/sesshu.png' },
+
+  // --- 安土桃山 ---
+  { level: 2, era: '安土桃山', name: 'フランシスコ・ザビエル', reading: 'ふらんしすこ・ざびえる', keywords: 'キリスト教, イエズス会', desc: '1549年、鹿児島に来航し、日本に初めてキリスト教を伝えた宣教師。', years: '1506～1552', imageUrl: 'images/xavier.png' },
+  { level: 1, era: '安土桃山', name: '織田信長', reading: 'おだのぶなが', keywords: '<ruby>長篠<rt>ながしの</rt></ruby>の戦い, <ruby>楽市<rt>らくいち</rt></ruby>・<ruby>楽座<rt>らくざ</rt></ruby>', desc: '<ruby>室町幕府<rt>むろまちばくふ</rt></ruby>を滅ぼす。鉄砲を活用し、<ruby>楽市<rt>らくいち</rt></ruby>・<ruby>楽座<rt>らくざ</rt></ruby>などの政策を実施した。', years: '1534～1582', imageUrl: 'images/oda_nobunaga.png' },
+  { level: 3, era: '安土桃山', name: '明智光秀', reading: 'あけちみつひで', keywords: '本能寺の変, 三日天下', desc: '織田信長の家臣。本能寺の変で信長を自害させたが、豊臣秀吉に敗れた。', years: '?～1582', imageUrl: 'images/akechi_mitsuhide.png' },
+  { level: 1, era: '安土桃山', name: '豊臣秀吉', reading: 'とよとみひでよし', keywords: '太閤検地, 刀狩, 天下統一', desc: '信長の後を継ぎ全国統一。検地と刀狩を行い、兵農分離を進めた。', years: '1537～1598', imageUrl: 'images/toyotomi_hideyoshi.png' },
+  { level: 3, era: '安土桃山', name: '千利休', reading: 'せんのりきゅう', keywords: '茶の湯, わび茶', desc: '織田信長や豊臣秀吉に仕え、「わび茶」を大成させた茶人。', years: '1522～1591', imageUrl: 'images/sennorikyu.png' },
+
+  // --- 江戸 ---
+  { level: 1, era: '江戸', name: '徳川家康', reading: 'とくがわいえやす', keywords: '<ruby>関ヶ原<rt>せきがはら</rt></ruby>の戦い, <ruby>江戸幕府<rt>えどばくふ</rt></ruby>', desc: '<ruby>関ヶ原<rt>せきがはら</rt></ruby>の戦いで勝利し、1603年に<ruby>江戸幕府<rt>えどばくふ</rt></ruby>を開いた。', years: '1542～1616', imageUrl: 'images/tokugawa_ieyasu.png' },
+  { level: 1, era: '江戸', name: '徳川家光', reading: 'とくがわいえみつ', keywords: '参勤交代, 鎖国, 武家諸法度', desc: '第3代将軍。参勤交代を制度化し、鎖国を完成させた。幕藩体制を確立した。', years: '1604～1651', imageUrl: 'images/tokugawa_iemitsu.png' },
+  { level: 3, era: '江戸', name: '徳川綱吉', reading: 'とくがわつなよし', keywords: '生類憐れみの令, 文治政治, 朱子学', desc: '第5代将軍。極端な動物愛護令である「生類憐れみの令」を出した。「犬公方」と呼ばれた。', years: '1646～1709', imageUrl: 'images/tokugawa_tsunayoshi.png' },
+  { level: 1, era: '江戸', name: '徳川吉宗', reading: 'とくがわよしむね', keywords: '享保の改革, 目安箱, 公事方御定書', desc: '第8代将軍。享保の改革を行い、目安箱の設置や新田開発を進めた。「米将軍」と呼ばれた。', years: '1684～1751', imageUrl: 'images/tokugawa_yoshimune.png' },
+  { level: 3, era: '江戸', name: '田沼意次', reading: 'たぬまおきつぐ', keywords: '株仲間, 賄賂', desc: '商人の力を利用して経済を立て直そうとしたが、賄賂政治と批判された。', years: '1719～1788', imageUrl: 'images/tanuma_okitsugu.png' },
+  { level: 3, era: '江戸', name: '松平定信', reading: 'まつだいらさだのぶ', keywords: '寛政の改革, 朱子学', desc: '田沼意次の政治を批判し、寛政の改革を行った。厳しい倹約令を出した。', years: '1758～1829', imageUrl: 'images/matsudaira_sadanobu.png' },
+  { level: 2, era: '江戸', name: '近松門左衛門', reading: 'ちかまつもんざえもん', keywords: '人形浄瑠璃, 元禄文化', desc: '元禄文化を代表する脚本家。人形浄瑠璃や歌舞伎の脚本を書いた。「曽根崎心中」。', years: '1653～1724', imageUrl: 'images/chikamatsu_monzaemon.png' },
+  { level: 3, era: '江戸', name: '井原西鶴', reading: 'いはらさいかく', keywords: '浮世草子, 日本永代蔵', desc: '元禄文化の作家。町人の生活を描いた「浮世草子」と呼ばれる小説を書いた。', years: '1642～1693', imageUrl: 'images/ihara_saikaku.png' },
+  { level: 3, era: '江戸', name: '松尾芭蕉', reading: 'まつおばしょう', keywords: '奥の細道, 俳諧', desc: '江戸時代前期の俳人。各地を旅して「奥の細道」などを著し、俳諧を芸術に高めた。', years: '1644～1694', imageUrl: 'images/matsuo_basho.png' },
+  { level: 2, era: '江戸', name: '歌川広重', reading: 'うたがわひろしげ', keywords: '東海道五十三次, 浮世絵', desc: '化政文化の浮世絵師。「東海道五十三次」など、風景画の名作を残した。', years: '1797～1858', imageUrl: 'images/utagawa_hiroshige.png' },
+  { level: 2, era: '江戸', name: '本居宣長', reading: 'もとおりのりなが', keywords: '国学, 古事記伝', desc: '「古事記」を研究し、「古事記伝」を著して国学を大成した。', years: '1730～1801', imageUrl: 'images/motoori_norinaga.png' },
+  { level: 2, era: '江戸', name: '杉田玄白', reading: 'すぎたげんぱく', keywords: '解体新書, 蘭学', desc: 'オランダ語の解剖書を翻訳し、前野良沢らと「解体新書」を出版した。', years: '1733～1817', imageUrl: 'images/sugita_genpaku.png' },
+  { level: 2, era: '江戸', name: '伊能忠敬', reading: 'いのうただたか', keywords: '日本地図, 測量', desc: '日本全国の海岸線を歩いて測量し、極めて正確な日本地図を作成した。', years: '1745～1818', imageUrl: 'images/inou_tadataka.png' },
+  { level: 2, era: '江戸', name: '大塩平八郎', reading: 'おおしおへいはちろう', keywords: '大塩の乱, 陽明学', desc: '元大阪町奉行所の役人。飢饉に苦しむ人々を救うため、幕府に対して反乱を起こした。', years: '1793～1837', imageUrl: 'images/oshio_heihachiro.png' },
+  { level: 3, era: '江戸', name: '水野忠邦', reading: 'みずのただくに', keywords: '天保の改革, 株仲間解散', desc: '天保の改革を行った。株仲間を解散させ、物価を下げようとしたが失敗した。', years: '1794～1851', imageUrl: 'images/mizuno_tadakuni.png' },
+  { level: 2, era: '江戸', name: 'ペリー', reading: 'ぺりー', keywords: '黒船来航, 日米和親条約', desc: 'アメリカの艦隊を率いて浦賀に来航。幕府に開国を迫り、日米和親条約を結ばせた。', years: '1794～1858', imageUrl: 'images/perry.png' },
+  { level: 2, era: '江戸', name: '井伊直弼', reading: 'いいなおすけ', keywords: '日米修好通商条約, 安政の大獄', desc: '大老として日米修好通商条約を結んだ。反対派を処罰したが、桜田門外の変で暗殺された。', years: '1815～1860', imageUrl: 'images/ii_naosuke.png' },
+  { level: 2, era: '江戸', name: '勝海舟', reading: 'かつかいしゅう', keywords: '江戸城無血開城, 咸臨丸', desc: '咸臨丸で太平洋を横断。西郷隆盛と会談し、江戸城の無血開城を実現させた。', years: '1823～1899', imageUrl: 'images/katsu_kaishu.png' },
+
+  // --- 明治 ---
+  { level: 1, era: '明治', name: '西郷隆盛', reading: 'さいごうたかもり', keywords: '薩長同盟, 西南戦争', desc: '薩長同盟を結び倒幕に貢献。後に政府と対立し、西南戦争を起こして自害した。', years: '1827～1877', imageUrl: 'images/saigo_takamori.png' },
+  { level: 1, era: '明治', name: '大久保利通', reading: 'おおくぼとしみち', keywords: '薩長同盟, 殖産興業', desc: '維新の三傑の一人。版籍奉還などを推進し、殖産興業政策により日本の近代化を進めた。', years: '1830～1878', imageUrl: 'images/okubo_toshimichi.png' },
+  { level: 1, era: '明治', name: '木戸孝允', reading: 'きどたかよし', keywords: '桂小五郎, 五箇条の御誓文', desc: '長州藩出身（桂小五郎）。薩長同盟を締結。五箇条の御誓文や版籍奉還に関わった。', years: '1833～1877', imageUrl: 'images/kido_takayoshi.png' },
+  { level: 1, era: '明治', name: '明治天皇', reading: 'めいじてんのう', keywords: '五箇条の御誓文, 大日本帝国憲法', desc: '五箇条の御誓文を発布。大日本帝国憲法を制定し、日本の近代国家の基礎を築いた。', years: '1852～1912', imageUrl: 'images/meiji_tenno.png' },
+  { level: 2, era: '明治', name: '福沢諭吉', reading: 'ふくざわゆきち', keywords: '学問のすゝめ, 慶應義塾', desc: '欧米の思想を紹介し、「学問のすゝめ」を著した。慶應義塾を創設した。', years: '1834～1901', imageUrl: 'images/fukuzawa_yukichi.png' },
+  { level: 2, era: '明治', name: '板垣退助', reading: 'いたがきたいすけ', keywords: '自由民権運動, 自由党', desc: '自由民権運動の指導者。「国会開設の建白書」を提出し、自由党を結成した。', years: '1837～1919', imageUrl: 'images/itagaki_taisuke.png' },
+  { level: 1, era: '明治', name: '伊藤博文', reading: 'いとうひろぶみ', keywords: '初代<ruby>内閣総理大臣<rt>ないかくそうりだいじん</rt></ruby>, <ruby>憲法制定<rt>けんぽうせいてい</rt></ruby>', desc: '初代の<ruby>内閣総理大臣<rt>ないかくそうりだいじん</rt></ruby>。<ruby>大日本帝国憲法<rt>だいにっぽんていこくけんぽう</rt></ruby>の草案を作成した。', years: '1841～1909', imageUrl: 'images/ito_hirobumi.png' },
+  { level: 2, era: '明治', name: '陸奥宗光', reading: 'むつむねみつ', keywords: '領事裁判権の撤廃', desc: '外務大臣として、領事裁判権（治外法権）の撤廃に成功した。', years: '1844～1897', imageUrl: 'images/mutsu_munemitsu.png' },
+  { level: 2, era: '明治', name: '東郷平八郎', reading: 'とうごうへいはちろう', keywords: '日露戦争, 日本海海戦', desc: '日露戦争の連合艦隊司令長官。日本海海戦でロシアのバルチック艦隊を破った。', years: '1847～1934', imageUrl: 'images/togo_heihachiro.png' },
+  { level: 2, era: '明治', name: '小村寿太郎', reading: 'こむらじゅたろう', keywords: '関税自主権の回復, ポーツマス条約', desc: '外務大臣として、関税自主権の回復に成功。ポーツマス条約の調印も行った。', years: '1855～1911', imageUrl: 'images/komura_jutaro.png' },
+  { level: 3, era: '明治', name: '津田梅子', reading: 'つだうめこ', keywords: '女子英学塾, 岩倉使節団', desc: '岩倉使節団でアメリカに留学。帰国後、女子英学塾（現在の津田塾大学）を創設した。', years: '1864～1929', imageUrl: 'images/tsuda_umeko.png' },
+  { level: 2, era: '明治', name: '与謝野晶子', reading: 'よさのあきこ', keywords: 'みだれ髪, 君死にたまふことなかれ', desc: '歌人。歌集「みだれ髪」や、弟を思う詩「君死にたまふことなかれ」で有名。', years: '1878～1942', imageUrl: 'images/yosano_akiko.png' },
+  { level: 2, era: '明治', name: '野口英世', reading: 'のぐちひでよ', keywords: '黄熱病研究', desc: '細菌学者。アメリカやアフリカで黄熱病などの研究を行い、現地で亡くなった。', years: '1876～1928', imageUrl: 'images/noguchi_hideyo.png' },
+  { level: 3, era: '明治', name: '田中正造', reading: 'たなかしょうぞう', keywords: '足尾銅山鉱毒事件, 天皇直訴', desc: '足尾銅山の鉱毒問題を解決するために尽力し、明治天皇に直訴しようとした政治家。', years: '1841～1913', imageUrl: 'images/tanaka_shozo.png' },
+];
+
+const ERA_CONFIG = {
+  '弥生': { color: 'bg-emerald-600', text: 'text-emerald-800', border: 'border-emerald-600', sub: 'bg-emerald-50', description: '稲作の始まりと小国の分立。クニの王たちが中国と交流した時代。' },
+  '飛鳥': { color: 'bg-purple-700', text: 'text-purple-900', border: 'border-purple-700', sub: 'bg-purple-50', description: '天皇中心の国づくりが進み、仏教文化が花開いた時代。' },
+  '奈良': { color: 'bg-red-700', text: 'text-red-900', border: 'border-red-700', sub: 'bg-red-50', description: '平城京に都が置かれ、遣唐使などを通じて国際色豊かな文化が栄えた時代。' },
+  '平安': { color: 'bg-fuchsia-700', text: 'text-fuchsia-900', border: 'border-fuchsia-700', sub: 'bg-fuchsia-50', description: '貴族が政治の実権を握り、日本風の国風文化が生まれた時代。' },
+  '鎌倉': { color: 'bg-cyan-800', text: 'text-cyan-900', border: 'border-cyan-800', sub: 'bg-cyan-50', description: '源頼朝により初の武家政権が誕生。素朴で力強い武士の気風が育った時代。' },
+  '室町': { color: 'bg-yellow-700', text: 'text-yellow-900', border: 'border-yellow-700', sub: 'bg-yellow-50', description: '足利氏による幕府政治。能や狂言、書院造など今日につながる文化が生まれた。' },
+  '安土桃山': { color: 'bg-orange-600', text: 'text-orange-900', border: 'border-orange-600', sub: 'bg-orange-50', description: '織田信長と豊臣秀吉による天下統一。豪華で雄大な文化が特徴。' },
+  '江戸': { color: 'bg-green-700', text: 'text-green-900', border: 'border-green-700', sub: 'bg-green-50', description: '徳川家康が開いた幕府による、260年あまり続く泰平の世。' },
+  '明治': { color: 'bg-indigo-700', text: 'text-indigo-900', border: 'border-indigo-700', sub: 'bg-indigo-50', description: '武士の世が終わり、西洋の文化を取り入れて近代国家へと生まれ変わった時代。' },
+};
+
+const KEYWORD_DEFINITIONS = {
+  // 弥生
+  '邪馬台国': '弥生時代後期にあったとされる国。女王卑弥呼が治めていた。場所は九州説と近畿説がある。',
+  '魏': '中国の三国時代（魏・呉・蜀）の一つ。卑弥呼が使いを送った相手。',
+  '親魏倭王': '魏の皇帝から卑弥呼に与えられた称号。「魏と親しい日本の王」という意味。',
+  '金印': '「漢委奴国王」と刻まれた金色のハンコ。福岡県の志賀島で見つかった。',
+  '魏志倭人伝': '中国の歴史書「三国志」に収められた『魏書』に記されている。',
+  
+  // 飛鳥
+  '推古天皇': '日本初の女性天皇。聖徳太子を摂政に任命し、天皇中心の国づくりを進めた。',
+  '推古天皇の摂政': '女性である推古天皇の代わりに政治を行ったこと。',
+  '摂政': '天皇が幼い時や女性である時に、天皇に代わって政治を行う役職。',
+  '冠位十二階': '家柄にとらわれず、能力のある人を役人に取り立てるための制度。冠の色で位を分けた。',
+  '十七条の憲法': '役人の心構えを示した決まり。「和を以て貴しと為す」などが有名。',
+  '遣隋使': '中国の隋に進んだ文化や制度を学ぶために送られた使い。小野妹子などが派遣された。',
+  '仏教受容': '仏教を国に受け入れるかどうかを巡って、崇仏派（蘇我氏）と排仏派（物部氏）が対立した。',
+  '崇峻天皇暗殺': '蘇我馬子が、対立した崇峻天皇を暗殺させた事件。臣下が天皇を殺害した唯一の例とされる。',
+  '飛鳥寺': '蘇我馬子が建立した日本最古の本格的な仏教寺院。',
+  '大化の改新': '中大兄皇子や中臣鎌足らが蘇我氏を倒し、天皇中心の政治を始めた改革。',
+  '天智天皇': '中大兄皇子が即位した後の名前。日本初の全国的な戸籍「庚午年籍」を作った。',
+  '公地公民': '土地と人民はすべて天皇（国）のものとする考え方。',
+  '班田収授法': '全国の人民の戸籍を作り、６歳以上のすべての男女に土地(口分田)を与え、耕作させた。',
+  '藤原氏の祖': '中臣鎌足が死の直前に「藤原」の姓を賜り、後の藤原氏の繁栄の基礎となったこと。',
+  '壬申の乱': '天智天皇の死後、跡継ぎをめぐって起こった戦い。大海人皇子が勝利し、天武天皇となった。',
+  '八色の姓': '天武天皇が定めた身分制度。天皇中心の新しい身分秩序を作ろうとした。',
+  '富本銭': '天武天皇の頃に作られた、日本最古の鋳造貨幣とされるお金。',
+
+  // 奈良
+  '国分寺': '国ごとに建てられたお寺。仏教の力で国を守ろうとした。',
+  '東大寺': '奈良の都（平城京）に建てられた大きなお寺。大仏があることで有名。',
+  '大仏': '東大寺に作られた巨大な仏像（盧舎那仏）。国家の平和を願って作られた。',
+  '墾田永年私財法': '新しく開墾した土地を、永久に自分のものにしてよいとした法律。',
+  '大仏造立': '聖武天皇の命令で、国家の安泰を願って巨大な仏像を作ること。行基が民衆の協力を集めた。',
+  '社会事業': '行基が行った、橋をかけたりため池を作ったりして人々の生活を助ける活動。',
+  '唐招提寺': '鑑真が建てたお寺。戒律を学ぶための道場として使われた。',
+  '律宗': '鑑真が伝えた仏教の宗派。厳しい戒律を守ることを重視する。',
+
+  // 平安
+  '平安京遷都': '794年、桓武天皇が京都に都を移したこと。「鳴くよウグイス」で覚える。',
+  '征夷大将軍派遣': '東北地方の蝦夷を平定するため、坂上田村麻呂を征夷大将軍として派遣したこと。',
+  '征夷大将軍': '東北地方の蝦夷を平定するための軍の総大将。後に武士の棟梁の役職となった。',
+  '蝦夷討伐': '大和朝廷の支配に従わなかった東北地方の人々（蝦夷）を武力で従わせたこと。',
+  '清水寺': '坂上田村麻呂が建てたとされる京都の有名なお寺。「清水の舞台」で知られる。',
+  '真言宗': '空海が開いた仏教の宗派。密教の教えを伝える。',
+  '高野山': '和歌山県にある山。空海が真言宗の道場（金剛峯寺）を開いた場所。',
+  '金剛峯寺': '高野山にある真言宗の総本山。',
+  '摂関政治': '天皇の親戚である藤原氏が、摂政や関白として政治の実権を握るやり方。',
+  '全盛期': '最も勢いがあり、栄えていた時期のこと。藤原道長の時代、摂関政治は頂点に達した。',
+  '源氏物語': '紫式部が書いた、光源氏を主人公とする世界最古の長編小説。',
+  '国風文化': '日本の風土や生活に合った、日本独自の文化。かな文字や寝殿造などが特徴。',
+  '枕草子': '清少納言が書いた随筆。「春はあけぼの」など四季の美しさが書かれている。',
+  '随筆': '見聞きしたことや感想を自由な形式で書いた文章。エッセイ。',
+  '院政': '天皇が位を譲って上皇となった後も、政治の実権を握り続けること。',
+  '北面の武士': '白河上皇が、院（上皇の住所）の警備のために置いた武士団。',
+  '太政大臣': '律令制度における最高の役職。平清盛は武士として初めてこの位についた。',
+  '日宋貿易': '平氏政権が行った、中国の宋との貿易。大輪田泊（現在の神戸港）などが拠点となった。',
+  '平氏政権': '平清盛を中心とする平氏一族による政権。貴族的な性格が強かった。',
+
+  // 鎌倉
+  '鎌倉幕府': '1192年に源頼朝が開いた武家政権。御恩と奉公の関係で結ばれた。',
+  '守護': '鎌倉幕府が国ごとに置いた役職。主に軍事や警察の仕事を担当した。',
+  '守護・地頭': '守護は国ごとの軍事・警察、地頭は荘園ごとの税の取り立てを担当した役職。',
+  '地頭': '鎌倉幕府が荘園や公領ごとに置いた役職。税の取り立てや土地の管理を行った。',
+  '壇ノ浦の戦い': '1185年、源義経率いる源氏軍が平氏を滅ぼした戦い。',
+  '尼将軍': '北条政子の呼び名。夫の頼朝の死後、実権を握り幕府を動かしたことからこう呼ばれた。',
+  '御成敗式目': '北条泰時が定めた、武士による武士のための最初の法律。公平な裁判の基準を示した。',
+  '執権': '鎌倉幕府で将軍を補佐し、政治の実権を握った役職。北条氏が代々務めた。',
+  '承久の乱': '後鳥羽上皇が鎌倉幕府を倒そうとして兵を挙げたが、幕府軍に敗れた戦い。',
+  '隠岐配流': '承久の乱に敗れた後鳥羽上皇が、隠岐の島（島根県）に流されたこと。',
+  '新古今和歌集': '後鳥羽上皇の命令で作られた和歌集。藤原定家などが編集した。',
+  '元寇': '中国の元が二度にわたって日本に攻めてきたこと（文永の役・弘安の役）。',
+  
+  // 室町
+  '建武の新政': '鎌倉幕府が滅びた後、後醍醐天皇が行った天皇中心の政治。武士の不満が高まり崩壊した。',
+  '南北朝時代': '天皇が京都（北朝）と吉野（南朝）の二つに分かれて対立した時代。約60年続いた。',
+  '室町幕府': '足利尊氏が開いた武家政権。京都の室町に置かれた。',
+  '建武の新政離反': '足利尊氏が、後醍醐天皇の政治（建武の新政）に反旗を翻したこと。',
+  '金閣': '足利義満が京都の北山に建てた別荘。金箔が貼られ、華やかな北山文化を象徴する。',
+  '南北朝統一': '足利義満が、対立していた南朝と北朝を一つにまとめたこと。',
+  '勘合貿易': '倭寇（海賊）と正式な貿易船を区別するために「勘合」という合い札を使った明との貿易。',
+  '銀閣': '足利義政が京都の東山に建てた別荘。質素で落ち着いた東山文化を象徴する。',
+  '応仁の乱': '将軍の跡継ぎ争いなどが原因で、京都を中心に11年間続いた戦乱。戦国時代の始まりとなった。',
+  '東山文化': '足利義政の頃に栄えた文化。わび・さびを重んじ、茶の湯や生け花などが発達した。',
+  '水墨画': '墨一色で描かれる絵画。雪舟によって大成された。',
+  
+  // 安土桃山
+  'キリスト教': 'イエス・キリストの教えを信じる宗教。ザビエルによって日本に伝えられた。',
+  'イエズス会': 'カトリック教会の宣教師団。ザビエルなどが所属し、世界各地で布教活動を行った。',
+  '長篠の戦い': '織田信長・徳川家康連合軍が、武田勝頼軍を鉄砲を使って破った戦い。',
+  '楽市・楽座': '市場の税をなくし、自由に商売できるようにした政策。城下町を賑わせた。',
+  '安土城': '織田信長が琵琶湖のほとりに築いた城。天守閣を持つ豪華な城だった。',
+  '本能寺の変': '1582年、明智光秀が織田信長を裏切り、自害させた事件。',
+  '三日天下': '明智光秀が信長を倒して天下をとったが、すぐに秀吉に敗れてその期間が短かったこと。',
+  '太閤検地': '豊臣秀吉が行った全国的な土地調査。枡の大きさを統一し、収穫量を石高で表した。',
+  '刀狩': '農民から武器を取り上げ、一揆を防いで農業に専念させた政策。',
+  '天下統一': '日本全国を一つの勢力が支配すること。豊臣秀吉が1590年に成し遂げた。',
+  '茶の湯': '抹茶を点てて客をもてなす儀式。',
+  'わび茶': '千利休が大成させた、質素で静かな茶の湯のスタイル。',
+  
+  // 江戸
+  '関ヶ原の戦い': '1600年、徳川家康（東軍）が石田三成（西軍）を破った戦い。天下分け目の戦いと呼ばれる。',
+  '江戸幕府': '1603年に徳川家康が江戸に開いた武家政権。260年以上の平和が続いた。',
+  '参勤交代': '大名に1年おきに領地と江戸を往復させた制度。費用の負担で大名の力を弱めた。',
+  '鎖国': '外国との付き合いや貿易を制限した政策。オランダと清（中国）のみ長崎での貿易を許された。',
+  '武家諸法度': '幕府が大名を統制するために定めた法律。違反すると領地没収などの罰を受けた。',
+  '生類憐れみの令': '徳川綱吉が出した、犬などの生き物を極端に保護する法令。',
+  '文治政治': '武力ではなく、学問や法律によって国を治める政治。綱吉や新井白石などが進めた。',
+  '朱子学': '儒教の一派。上下の身分関係を重んじるため、幕府公認の学問として奨励された。',
+  '享保の改革': '徳川吉宗が行った改革。質素倹約や新田開発、目安箱の設置などを行った。',
+  '目安箱': '徳川吉宗が設置した、庶民の意見を聞くための箱。小石川養生所などがここから生まれた。',
+  '公事方御定書': '徳川吉宗が定めた裁判の基準。これにより公平な裁判が行われるようになった。',
+  '株仲間': '幕府の許可を得て営業を独占した同業者組合。田沼意次の時代に奨励された。',
+  '賄賂': '自分の利益のために、役人などに不正に贈る金品のこと。田沼意次の時代に横行したとされる。',
+  '寛政の改革': '松平定信が行った改革。田沼時代の政治を否定し、厳しい倹約や風紀の引き締めを行った。',
+  '人形浄瑠璃': '三味線の伴奏に合わせて語り手が物語を語り、人形を操る劇。',
+  '元禄文化': '江戸時代前期、上方（大阪・京都）を中心に栄えた町人文化。',
+  '浮世草子': '井原西鶴が書いた、町人の生活や世相を描いた小説。',
+  '日本永代蔵': '井原西鶴の代表作。商人が金持ちになるための心得などが書かれている。',
+  '奥の細道': '松尾芭蕉が東北・北陸を旅して書いた紀行文。俳句が織り交ぜられている。',
+  '俳諧': '俳句のもとになった文芸。松尾芭蕉が芸術として高めた。',
+  '東海道五十三次': '歌川広重の代表作。東海道の宿場町の風景を描いた浮世絵シリーズ。',
+  '浮世絵': '江戸時代の庶民の生活や風俗、風景などを描いた絵画。版画が多く、大量生産された。',
+  '国学': '仏教や儒教が入ってくる前の、日本本来の精神や文化を研究する学問。',
+  '古事記伝': '本居宣長が、日本の神話「古事記」を詳しく解説した書物。35年かけて完成した。',
+  '解体新書': '杉田玄白らが、オランダ語の解剖書「ターヘル・アナトミア」を翻訳した本。',
+  '蘭学': 'オランダ語を通じて、西洋の文化や科学を学ぶ学問。',
+  '日本地図': '伊能忠敬が日本全国を歩いて測量し、作成した地図（大日本沿海輿地全図）。',
+  '測量': '土地の広さや高さ、距離などを機械を使って正確に測ること。',
+  '大塩の乱': '元大阪町奉行所の役人大塩平八郎が、飢饉に苦しむ民衆を救うために起こした反乱。',
+  '陽明学': '「知行合一（知識と行動は一致すべき）」を説く儒教の一派。大塩平八郎が信奉した。',
+  '天保の改革': '水野忠邦が行った改革。株仲間の解散などを命じたが、経済が混乱し失敗した。',
+  '株仲間解散': '物価を下げるために、水野忠邦が株仲間（独占的な商人組合）を解散させたこと。',
+  '黒船来航': '1853年、ペリー率いるアメリカ艦隊が浦賀に来航し、開国を求めた事件。',
+  '日米和親条約': '1854年、日本がアメリカと結んだ条約。下田・函館を開港し、鎖国が終わった。',
+  '日米修好通商条約': '1858年、日本がアメリカと結んだ貿易のための条約。日本に不利な不平等条約だった。',
+  '安政の大獄': '井伊直弼が、幕府の政策に反対する人々を厳しく処罰した事件。',
+  '江戸城無血開城': '新政府軍が江戸城を攻める直前、勝海舟と西郷隆盛の会談により、戦わずして城を明け渡したこと。',
+  '咸臨丸': '勝海舟が艦長として太平洋を横断した、幕府の軍艦。',
+
+  // 明治
+  '薩長同盟': '仲の悪かった薩摩藩と長州藩が、坂本龍馬らの仲立ちで結んだ同盟。倒幕の大きな力となった。',
+  '西南戦争': '1877年、西郷隆盛を中心とする士族（元武士）たちが起こした日本最大の内戦。',
+  '殖産興業': '近代的な工場をつくり、産業を盛んにして国を豊かにしようとする政策。',
+  '桂小五郎': '木戸孝允の幕末時代の名前。長州藩のリーダーとして活躍した。',
+  '五箇条の御誓文': '明治天皇が神々に誓う形で出された、新しい政治の方針。「広く会議を興し…」など。',
+  '大日本帝国憲法': '1889年に発布された、日本最初の近代的な憲法。',
+  '学問のすゝめ': '福沢諭吉の代表作。「天は人の上に人を造らず…」という書き出しで、平等の大切さを説いた。',
+  '慶應義塾': '福沢諭吉が創設した学校。現在の慶應義塾大学。',
+  '自由民権運動': '国会を開き、国民が政治に参加する権利を求めた運動。',
+  '自由党': '板垣退助が党首となって結成した日本最初の政党。',
+  '初代内閣総理大臣': '内閣の首長。初代は伊藤博文。',
+  '内閣総理大臣': '内閣の首長。初代は伊藤博文。',
+  '憲法制定': '国の基本法である憲法を作ること。近代国家としての体裁を整える目的があった。',
+  '領事裁判権の撤廃': '外国人が日本で罪を犯しても、その国の領事が裁判をする権利（治外法権）をなくすこと。',
+  '日露戦争': '1904年に始まった日本とロシアの戦争。日本が勝利した。',
+  '日本海海戦': '日露戦争において、東郷平八郎率いる日本海軍がロシアのバルチック艦隊を全滅させた戦い。',
+  '関税自主権の回復': '輸入品にかける税（関税）の税率を、日本が自分で決められる権利を取り戻すこと。',
+  'ポーツマス条約': '日露戦争の講和条約。アメリカの仲介で結ばれた。',
+  '女子英学塾': '津田梅子が創設した、女性のための英語学校。現在の津田塾大学。',
+  '岩倉使節団': '条約改正の予備交渉と欧米の視察のために派遣された使節団。岩倉具視や津田梅子らが参加した。',
+  'みだれ髪': '与謝野晶子の第一歌集。情熱的な歌が多く収められている。',
+  '君死にたまふことなかれ': '日露戦争に行った弟を心配して、与謝野晶子が詠んだ詩。',
+  '黄熱病研究': '野口英世がアフリカなどで行った、伝染病の研究。',
+  '足尾銅山鉱毒事件': '栃木県の足尾銅山から流れた毒が川を汚染し、農作物や住民に被害を与えた公害事件。',
+  '天皇直訴': '田中正造が、鉱毒の被害を訴えるため、明治天皇の馬車に直接手紙を渡そうとしたこと。',
+};
+
+        const ERA_CONFIG_KEYS = Object.keys(ERA_CONFIG);
+
+        // --- アプリケーションロジック ---
+        
+        let state = {
+            gameState: 'menu',
+            selectedEras: [...ERA_CONFIG_KEYS],
+            selectedLevels: [1, 2, 3],
+            mode: 'mask', // 'mask', 'kanji'
+            showRuby: false, // ルビ表示状態
+            playQueue: [],
+            currentIndex: 0,
+            selectedKeyword: null,
+            showImageHint: false,
+            // 読み込みエラーが発生した画像を記録する
+            failedImages: new Set() 
+        };
+
+        function setState(newState) {
+            state = { ...state, ...newState };
+            render();
+        }
+
+        function getQuestionDisplayName(data) {
+            if (state.mode === 'kanji') return '？';
+            
+            const name = data.name;
+            const chars = [...name];
+            if (chars.length >= 2) chars[1] = '□';
+            if (chars.length >= 4) chars[3] = '□';
+            return chars.join('');
+        }
+
+        function toggleEras(era) {
+            if (state.selectedEras.includes(era)) {
+                setState({ selectedEras: state.selectedEras.filter(e => e !== era) });
+            } else {
+                setState({ selectedEras: [...state.selectedEras, era] });
+            }
+        }
+
+        function toggleLevel(levelId) {
+            if (levelId === 'all') {
+                setState({ selectedLevels: [1, 2, 3] });
+            } else {
+                if (state.selectedLevels.includes(levelId)) {
+                    setState({ selectedLevels: state.selectedLevels.filter(l => l !== levelId) });
+                } else {
+                    setState({ selectedLevels: [...state.selectedLevels, levelId] });
+                }
+            }
+        }
+
+        function startGame() {
+            state.failedImages.clear();
+
+            const filteredData = RAW_DATA.filter(item => 
+                state.selectedEras.includes(item.era) && 
+                state.selectedLevels.includes(item.level)
+            );
+            
+            if (filteredData.length === 0) {
+                alert("選択した条件に該当するデータがありません。");
+                return;
+            }
+
+            filteredData.sort((a, b) => ERA_CONFIG_KEYS.indexOf(a.era) - ERA_CONFIG_KEYS.indexOf(b.era));
+
+            const queue = [];
+            let currentEra = null;
+            filteredData.forEach(item => {
+                if (item.era !== currentEra) {
+                    currentEra = item.era;
+                    queue.push({ type: 'intro', era: currentEra });
+                }
+                queue.push({ type: 'card', data: item });
+            });
+
+            setState({ 
+                playQueue: queue, 
+                currentIndex: 0, 
+                gameState: queue[0].type === 'intro' ? 'intro' : 'question',
+                showImageHint: false
+            });
+        }
+
+        function handleNext() {
+            const nextIndex = state.currentIndex + 1;
+            if (nextIndex >= state.playQueue.length) {
+                setState({ gameState: 'result' });
+                return;
+            }
+            const nextItem = state.playQueue[nextIndex];
+            setState({ 
+                currentIndex: nextIndex,
+                gameState: nextItem.type === 'intro' ? 'intro' : 'question',
+                showImageHint: false
+            });
+        }
+
+        function resetGame() {
+            setState({ gameState: 'menu', playQueue: [], currentIndex: 0, selectedKeyword: null, showImageHint: false });
+        }
+
+        function handleKeywordClick(keyword) {
+            // タグ（<rt>～</rt>、<ruby>、</ruby>）を正規表現で完全に除去
+            const plainKeyword = keyword.replace(/<rt>.*?<\/rt>|<\/?ruby>/g, '').trim();
+            setState({
+                selectedKeyword: {
+                    word: plainKeyword,
+                    desc: KEYWORD_DEFINITIONS[plainKeyword] || "解説データがまだ登録されていません。"
+                }
+            });
+        }
+
+        // --- レンダリング関数群 ---
+
+        // 解説ポップアップのレンダリング
+        function renderKeywordPopup() {
+            if (!state.selectedKeyword) return '';
+            return `
+                <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-6 animate-in" onclick="event.stopPropagation(); setState({selectedKeyword: null})">
+                    <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm relative zoom-in" onclick="event.stopPropagation()">
+                        <button onclick="setState({selectedKeyword: null})" class="absolute right-4 top-4 text-gray-400 hover:text-gray-600">
+                            <i data-lucide="x" class="w-6 h-6"></i>
+                        </button>
+                        <div class="flex items-center gap-2 mb-4 text-indigo-600 font-bold border-b pb-2">
+                            <i data-lucide="book-open" class="w-5 h-5"></i>
+                            <span>用語解説</span>
+                        </div>
+                        <h3 class="text-2xl font-black text-gray-800 mb-4">${state.selectedKeyword.word}</h3>
+                        <p class="text-gray-600 leading-relaxed font-medium">${state.selectedKeyword.desc}</p>
+                        <button onclick="setState({selectedKeyword: null})" class="w-full mt-6 bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition">閉じる</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFuriganaToggle() {
+            return `
+                <button onclick="event.stopPropagation(); setState({showRuby: !state.showRuby})" 
+                    class="fixed top-3 right-3 z-50 flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all ${state.showRuby ? 'bg-indigo-600 text-white' : 'bg-white text-gray-600 border'}">
+                    <i data-lucide="languages" class="w-4 h-4"></i>
+                    <span class="text-xs font-bold">${state.showRuby ? 'ふりがな：ON' : 'ふりがな：OFF'}</span>
+                </button>
+            `;
+        }
+
+        function renderMenu() {
+            const availableEras = [...new Set(RAW_DATA.map(d => d.era))];
+            availableEras.sort((a, b) => ERA_CONFIG_KEYS.indexOf(a) - ERA_CONFIG_KEYS.indexOf(b));
+
+            return `
+                <div class="max-w-md mx-auto p-4 space-y-5 animate-in pb-20">
+                    <div class="text-center space-y-1 mb-6 mt-4">
+                        <h1 class="text-2xl font-bold text-gray-800">歴史人物マスター</h1>
+                        <p class="text-gray-500 text-sm">重要人物を時代背景と共に学習</p>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border p-4 space-y-3">
+                        <h2 class="font-bold flex items-center gap-2 text-gray-700 text-sm">
+                            <i data-lucide="layers" class="w-4 h-4"></i> レベル選択
+                        </h2>
+                        <div class="grid grid-cols-2 gap-2">
+                            ${[
+                                { id: 1, label: 'Level 1', sub: '基本' },
+                                { id: 2, label: 'Level 2', sub: '発展' },
+                                { id: 3, label: 'Level 3', sub: '詳細' },
+                                { id: 'all', label: '全選択', sub: 'Lv1-3' }
+                            ].map(lvl => {
+                                const isActive = lvl.id === 'all' 
+                                    ? [1, 2, 3].every(id => state.selectedLevels.includes(id))
+                                    : state.selectedLevels.includes(lvl.id);
+                                return `
+                                    <button onclick="toggleLevel(${typeof lvl.id === 'string' ? `'${lvl.id}'` : lvl.id})" 
+                                        class="py-3 rounded-lg border text-center transition-all flex flex-col items-center justify-center ${isActive ? 'border-indigo-500 bg-indigo-50 text-indigo-700 ring-1 ring-indigo-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}">
+                                        <div class="font-bold text-sm">${lvl.label}</div>
+                                        <div class="text-xs opacity-70">${lvl.sub}</div>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border p-4 space-y-4">
+                        <h2 class="font-bold flex items-center gap-2 text-gray-700 text-sm">
+                            <i data-lucide="settings" class="w-4 h-4"></i> 出題モード
+                        </h2>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="setState({mode: 'mask'})" class="p-3 rounded-lg border text-sm font-medium transition-all ${state.mode === 'mask' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50'}">
+                                <span class="block text-base mb-1 font-mono-mask">織□信□</span>
+                                <span class="text-xs text-gray-500">穴あき</span>
+                            </button>
+                            <button onclick="setState({mode: 'kanji'})" class="p-3 rounded-lg border text-sm font-medium transition-all ${state.mode === 'kanji' ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-gray-200 hover:bg-gray-50'}">
+                                <span class="block text-base mb-1 font-bold">？</span>
+                                <span class="text-xs text-gray-500">漢字</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-xl shadow-sm border p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h2 class="font-bold flex items-center gap-2 text-gray-700 text-sm">
+                                <i data-lucide="book-open" class="w-4 h-4"></i> 時代選択
+                            </h2>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            ${availableEras.map(era => `
+                                <label class="flex items-center justify-center p-2 rounded border cursor-pointer text-sm transition-colors ${state.selectedEras.includes(era) ? 'bg-indigo-50 border-indigo-200 text-indigo-800 font-medium' : 'bg-white border-gray-100 text-gray-500'}">
+                                    <input type="checkbox" class="hidden" ${state.selectedEras.includes(era) ? 'checked' : ''} onchange="toggleEras('${era}')">
+                                    ${era}
+                                </label>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <button onclick="startGame()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg flex items-center justify-center gap-2 text-lg">
+                        <i data-lucide="play" class="w-5 h-5"></i> スタート
+                    </button>
+                </div>
+            `;
+        }
+
+        function renderIntro() {
+            const item = state.playQueue[state.currentIndex];
+            const config = ERA_CONFIG[item.era];
+            return `
+                <div onclick="handleNext()" class="flex flex-col items-center justify-center h-full p-8 text-white ${config.color} cursor-pointer animate-in">
+                    <div class="text-center space-y-6 max-w-md pointer-events-none">
+                        <div class="text-xl font-medium opacity-80">時代背景</div>
+                        <h2 class="text-5xl font-bold tracking-widest border-b-2 border-white/30 pb-4 inline-block">${item.era}</h2>
+                        <p class="text-lg leading-relaxed font-medium mt-4">${config.description}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function onImageError(imageUrl) {
+            state.failedImages.add(imageUrl);
+            render(); 
+        }
+
+        function renderCard(isAnswer) {
+            const item = state.playQueue[state.currentIndex];
+            if (!item) return '';
+            const data = item.data; 
+            const config = ERA_CONFIG[data.era];
+            const cardCount = state.playQueue.filter(q => q.type === 'card').length;
+            const currentCount = state.playQueue.filter((q, i) => i <= state.currentIndex && q.type === 'card').length;
+
+            const hasValidImage = data.imageUrl && !state.failedImages.has(data.imageUrl);
+
+            return `
+                <div onclick="${isAnswer || state.selectedKeyword ? '' : 'setState({gameState: \'answer\'})'}" 
+                    class="h-full flex flex-col w-full bg-gray-100 cursor-pointer relative ${state.showRuby ? 'ruby-on' : ''}">
+                    
+                    <!-- Header -->
+                    <div class="px-4 py-3 ${config.color} text-white flex justify-between items-center shadow-md z-10 pointer-events-none">
+                        <span class="font-bold">${data.era}</span>
+                        <div class="flex gap-2 text-xs opacity-90 font-mono bg-black/10 px-2 py-1 rounded">
+                            <span>Lv.${data.level}</span>
+                            <span>${currentCount} / ${cardCount}</span>
+                        </div>
+                    </div>
+
+                    <!-- Main Card -->
+                    <div onclick="${isAnswer && !state.selectedKeyword ? 'handleNext()' : ''}" class="flex-1 p-4 flex flex-col justify-center">
+                        <div class="bg-white rounded-2xl shadow-xl w-full max-w-md mx-auto aspect-[3/4] max-h-[600px] flex flex-col relative overflow-hidden border-2 ${isAnswer ? config.border : 'border-white'}">
+                            
+                            <!-- Question Background Icon -->
+                            ${!isAnswer ? `<i data-lucide="help-circle" class="absolute -right-8 -bottom-8 text-gray-50 w-64 h-64 transform -rotate-12 pointer-events-none z-0"></i>` : ''}
+
+                            <!-- Top Section -->
+                            <div class="flex-[2] flex flex-col items-center justify-center p-6 text-center space-y-4 relative z-10 ${isAnswer ? config.sub : ''}">
+                                ${!isAnswer ? `
+                                    <div class="space-y-2 pointer-events-none">
+                                        <div class="text-xs text-gray-400 font-bold uppercase tracking-wider">Who is this?</div>
+                                        <div class="text-4xl md:text-5xl font-black text-gray-800 break-words ${state.mode === 'mask' ? 'font-mono-mask' : ''}">
+                                            ${getQuestionDisplayName(data)}
+                                        </div>
+                                    </div>
+                                    ${hasValidImage ? `
+                                        <div onclick="event.stopPropagation()">
+                                            ${!state.showImageHint ? `
+                                                <button onclick="setState({showImageHint: true})" class="mt-4 flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-full text-sm font-bold border border-indigo-100 hover:bg-indigo-100 transition">
+                                                    <i data-lucide="eye" class="w-4 h-4"></i> 肖像画ヒントを見る
+                                                </button>
+                                            ` : `
+                                                <div class="mt-4 relative animate-in">
+                                                    <img src="${data.imageUrl}" class="h-32 w-32 object-cover rounded-full border-4 border-white shadow-md bg-gray-50" 
+                                                         onerror="onImageError('${data.imageUrl}')">
+                                                    <button onclick="setState({showImageHint: false})" class="absolute -top-1 -right-1 bg-white rounded-full p-1 shadow border text-gray-400 hover:text-gray-600">
+                                                        <i data-lucide="eye-off" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
+                                            `}
+                                        </div>
+                                    ` : ''}
+                                ` : `
+                                    <div class="flex flex-col items-center">
+                                        ${hasValidImage ? `
+                                            <img src="${data.imageUrl}" class="h-24 w-24 object-cover rounded-full border-4 border-white shadow-md bg-gray-50 mb-2" 
+                                                 onerror="onImageError('${data.imageUrl}')">
+                                        ` : ''}
+                                        <div class="text-sm text-gray-500 mb-1">${data.reading}</div>
+                                        <h2 class="text-4xl md:text-5xl font-black ${config.text} leading-tight">${data.name}</h2>
+                                    </div>
+                                    <span class="text-xs font-mono bg-white px-3 py-1 rounded-full shadow-sm text-gray-600 mt-2">
+                                        ${data.years}
+                                    </span>
+                                `}
+                            </div>
+
+                            <!-- Bottom Section -->
+                            <div class="flex-[3] p-6 bg-white space-y-4 relative z-10">
+                                ${!isAnswer ? `
+                                    <div class="text-center w-full">
+                                        <p class="text-lg text-gray-700 font-medium leading-relaxed pointer-events-none mb-4">
+                                            ${data.desc.replace(/<rt>.*?<\/rt>|<\/?ruby>/g, '').split('。')[0]}。
+                                        </p>
+                                        <div class="flex flex-wrap justify-center gap-2">
+                                            ${data.keywords.split(',').map(k => `
+                                                <span class="px-3 py-1 bg-gray-100 text-gray-500 text-sm rounded-full font-bold">
+                                                    ${k.replace(/<rt>.*?<\/rt>|<\/?ruby>/g, '').trim()}
+                                                </span>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                ` : `
+                                    <div>
+                                        <div class="text-xs font-bold ${config.text} uppercase tracking-wider mb-2 flex items-center gap-1 pointer-events-none">
+                                            <i data-lucide="book-open" class="w-3 h-3"></i> 重要語句
+                                        </div>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${data.keywords.split(',').map(k => {
+                                                const cleanKeyword = k.trim();
+                                                return `
+                                                <button onclick="event.stopPropagation(); handleKeywordClick(this.getAttribute('data-raw'))" 
+                                                    data-raw="${cleanKeyword.replace(/"/g, '&quot;')}"
+                                                    class="px-2 py-1 ${config.color} bg-opacity-10 ${config.text} hover:bg-opacity-20 text-sm rounded font-bold transition flex items-center gap-1">
+                                                    ${cleanKeyword}
+                                                    <i data-lucide="help-circle" class="w-3 h-3 opacity-60"></i>
+                                                </button>
+                                                `;
+                                            }).join('')}
+                                        </div>
+                                    </div>
+                                    <div class="pt-2 border-t border-gray-100 pointer-events-none">
+                                        <p class="text-gray-700 text-sm leading-relaxed">${data.desc}</p>
+                                    </div>
+                                `}
+                            </div>
+
+                            <div class="bg-gray-50 p-3 text-center ${!isAnswer ? 'text-indigo-500 animate-pulse' : 'text-gray-400'} font-bold text-xs border-t pointer-events-none relative z-10">
+                                ${!isAnswer ? 'タップして答えを表示' : '画面をタップして次へ'}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderResult() {
+            return `
+                <div class="flex flex-col items-center justify-center h-full p-8 bg-gray-50 space-y-6 animate-in">
+                    <i data-lucide="check-circle-2" class="text-emerald-500 w-20 h-20"></i>
+                    <h2 class="text-3xl font-bold text-gray-800">学習完了！</h2>
+                    <div class="w-full max-w-xs space-y-3">
+                        <button onclick="startGame()" class="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl shadow-lg">もう一度</button>
+                        <button onclick="resetGame()" class="w-full bg-white border text-gray-700 font-bold py-3 rounded-xl">メニューに戻る</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            if (!app) return;
+            let content = '';
+
+            // どの状態でも、キーワードが選択されていればポップアップを描画のトップに追加
+            const popup = renderKeywordPopup();
+
+            if (state.gameState === 'menu') content = renderMenu();
+            else if (state.gameState === 'intro') content = renderIntro();
+            else if (state.gameState === 'question') content = renderCard(false);
+            else if (state.gameState === 'answer') content = renderCard(true);
+            else if (state.gameState === 'result') content = renderResult();
+
+            // コンテンツの構成にふりがなトグルとポップアップを追加
+            app.innerHTML = `
+                ${(state.gameState !== 'menu' && state.gameState !== 'result') ? renderFuriganaToggle() : ''}
+                ${popup}
+                ${content}
+            `;
+            lucide.createIcons();
+        }
+
+        render();
+    </script>
+</body>
+</html>
